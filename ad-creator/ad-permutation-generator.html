@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reddit Ad Permutation Generator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    h1 { color: #0D2942; margin-bottom: 10px; }
+    h2 { color: #0D7377; margin-top: 30px; }
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .input-group { margin-bottom: 15px; }
+    label { display: block; font-weight: 600; margin-bottom: 5px; color: #0D2942; }
+    textarea { 
+      width: 100%; 
+      padding: 10px; 
+      border: 1px solid #ddd; 
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .hint { font-size: 12px; color: #666; margin-top: 3px; }
+    button {
+      background: #0D7377;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    button:hover { background: #0D2942; }
+    button.secondary { background: #666; }
+    button.secondary:hover { background: #444; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { 
+      padding: 10px; 
+      text-align: left; 
+      border-bottom: 1px solid #eee;
+      font-size: 13px;
+    }
+    th { background: #0D2942; color: white; }
+    tr:hover { background: #f5f5f5; }
+    .copy-btn {
+      background: #F39237;
+      padding: 4px 8px;
+      font-size: 12px;
+      margin: 0;
+    }
+    .stats {
+      background: #e8f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    #output { display: none; }
+    .ad-preview {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    .ad-preview h3 { margin: 0 0 10px 0; color: #0D2942; }
+    .ad-preview p { margin: 5px 0; color: #666; }
+    .ad-preview .cta {
+      display: inline-block;
+      background: #0D7377;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+    .ad-preview .image-tag {
+      display: inline-block;
+      background: #F39237;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Reddit Ad Permutation Generator</h1>
+  <p>Generate all ad combinations and copy to Reddit Ads Manager.</p>
+
+  <div class="warning">
+    <strong>⚠️ Before creating ads:</strong>
+    Upload your images (v1.jpg, v2.jpg, v3.jpg) to Reddit Ads Manager first. 
+    Then use this tool to generate all headline/body/CTA combinations.
+  </div>
+
+  <div class="section">
+    <h2>Step 1: Your Images</h2>
+    <div class="input-group">
+      <label>Images (one per line)</label>
+      <textarea id="images" rows="3" placeholder="v1.jpg&#10;v2.jpg&#10;v3.jpg">v1.jpg
+v2.jpg
+v3.jpg</textarea>
+      <div class="hint">Upload these to Reddit Ads Manager first</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Step 2: Your Content</h2>
+    <div class="input-group">
+      <label>Headlines (one per line)</label>
+      <textarea id="headlines" rows="5" placeholder="Your boss wants AI in Salesforce...&#10;Your execs want AI in Salesforce...&#10;Your board wants AI in Salesforce...">Your boss wants AI in Salesforce. Here are 7 Agentforce lessons from 15+ enterprise orgs.
+Your execs want AI in Salesforce. Here are 7 Agentforce lessons from 15+ enterprise orgs.
+Your board wants AI in Salesforce. Here are 7 Agentforce lessons from 15+ enterprise orgs.</textarea>
+    </div>
+    <div class="input-group">
+      <label>Body Copy (one per line)</label>
+      <textarea id="body" rows="5" placeholder="Learn how to implement Agentforce...&#10;Enterprise AI that actually works...">Learn how to implement Agentforce in your organization. Download our comprehensive guide with real-world examples from enterprise deployments.
+Enterprise AI that actually works. See how 15+ organizations transformed their Salesforce with Agentforce.</textarea>
+    </div>
+    <div class="input-group">
+      <label>CTAs (one per line)</label>
+      <textarea id="ctas" rows="2" placeholder="DOWNLOAD&#10;LEARN_MORE">DOWNLOAD
+LEARN_MORE</textarea>
+    </div>
+    <div class="input-group">
+      <label>Base URLs (one per line)</label>
+      <textarea id="urls" rows="2" placeholder="https://bluprintx.com/agentforce-360/&#10;https://bluprintx.com/agentforce-360-min/">https://bluprintx.com/agentforce-360/
+https://bluprintx.com/agentforce-360-min/</textarea>
+      <div class="hint">First URL = full version, second = mini version (if any)</div>
+    </div>
+  </div>
+
+  <button onclick="generate()">🚀 Generate Permutations</button>
+  <button class="secondary" onclick="copyAll()">📋 Copy All to Clipboard</button>
+  <button class="secondary" onclick="clearAll()">🗑️ Clear All</button>
+
+  <div id="output">
+    <div class="stats" id="stats"></div>
+    
+    <h2>Step 3: Your Ads (Click Copy, then Paste to Reddit)</h2>
+    <p>For each ad: Go to ads.reddit.com → Create Ad → Freeform → Copy from here</p>
+    
+    <div id="preview"></div>
+    
+    <h3>Table View (for spreadsheet)</h3>
+    <table id="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Image</th>
+          <th>Headline</th>
+          <th>Body</th>
+          <th>CTA</th>
+          <th>URL</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let permutations = [];
+
+    function generate() {
+      const images = getLines('images');
+      const headlines = getLines('headlines');
+      const body = getLines('body');
+      const ctas = getLines('ctas');
+      const urls = getLines('urls');
+
+      if (images.length === 0 || headlines.length === 0 || ctas.length === 0 || urls.length === 0) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      permutations = [];
+      
+      for (const img of images) {
+        for (const headline of headlines) {
+          for (const b of body) {
+            for (const cta of ctas) {
+              for (const url of urls) {
+                permutations.push({
+                  id: permutations.length + 1,
+                  image: img,
+                  headline: headline,
+                  body: b,
+                  cta: cta,
+                  url: url,
+                  notes: `${headline.substring(0, 30)}... | ${img} | ${cta}`
+                });
+              }
+            }
+          }
+        }
+      }
+
+      renderOutput();
+    }
+
+    function getLines(id) {
+      return document.getElementById(id).value
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+    }
+
+    function renderOutput() {
+      document.getElementById('output').style.display = 'block';
+      
+      document.getElementById('stats').innerHTML = `
+        📊 <strong>${permutations.length}</strong> permutations generated from:
+        ${images.length} images × ${headlines.length} headlines × ${body.length} body × ${ctas.length} CTAs × ${urls.length} URLs
+      `;
+
+      // Render preview
+      let previewHtml = '';
+      permutations.forEach((p, i) => {
+        if (i < 3) {
+          previewHtml += `
+            <div class="ad-preview">
+              <h3>${p.headline}</h3>
+              <span class="image-tag">${p.image}</span>
+              <span class="cta">${p.cta}</span>
+              <p>${p.body}</p>
+              <p><strong>URL:</strong> ${p.url}</p>
+            </div>
+          `;
+        }
+      });
+      if (permutations.length > 3) {
+        previewHtml += `<p><em>...and ${permutations.length - 3} more ads below</em></p>`;
+      }
+      document.getElementById('preview').innerHTML = previewHtml;
+
+      // Render table
+      let tableHtml = '';
+      permutations.forEach((p, i) => {
+        tableHtml += `
+          <tr>
+            <td>${i + 1}</td>
+            <td><strong>${p.image}</strong></td>
+            <td>${p.headline.substring(0, 50)}${p.headline.length > 50 ? '...' : ''}</td>
+            <td>${p.body.substring(0, 40)}${p.body.length > 40 ? '...' : ''}</td>
+            <td><strong>${p.cta}</strong></td>
+            <td>${p.url.substring(0, 40)}...</td>
+            <td><button class="copy-btn" onclick="copyRow(${i})">Copy</button></td>
+          </tr>
+        `;
+      });
+      document.getElementById('tableBody').innerHTML = tableHtml;
+
+      // Scroll to output
+      document.getElementById('output').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function copyRow(index) {
+      const p = permutations[index];
+      const text = `${p.image}\n${p.headline}\n${p.body}\n${p.cta}\n${p.url}`;
+      navigator.clipboard.writeText(text);
+      alert(`Copied ad #${index + 1}`);
+    }
+
+    function copyAll() {
+      if (permutations.length === 0) {
+        alert('Generate permutations first');
+        return;
+      }
+      
+      let csv = 'Image,Headline,Body,CTA,URL,Notes\n';
+      permutations.forEach(p => {
+        csv += `"${p.image}","${p.headline.replace(/"/g, '""')}","${p.body.replace(/"/g, '""')}","${p.cta}","${p.url}","${p.notes}"\n`;
+      });
+      
+      navigator.clipboard.writeText(csv);
+      alert(`Copied ${permutations.length} rows as CSV`);
+    }
+
+    function clearAll() {
+      if (confirm('Clear all inputs?')) {
+        document.getElementById('headlines').value = '';
+        document.getElementById('body').value = '';
+        document.getElementById('ctas').value = '';
+        document.getElementById('urls').value = '';
+        document.getElementById('output').style.display = 'none';
+        permutations = [];
+      }
+    }
+  </script>
+</body>
+</html>
