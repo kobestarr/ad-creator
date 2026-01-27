@@ -11,6 +11,17 @@ const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 
+// Try to load keytar for secure token storage, fallback to file if unavailable
+let keytar;
+try {
+  keytar = require('keytar');
+} catch (error) {
+  keytar = null;
+}
+
+const KEYCHAIN_SERVICE = 'ad-creator';
+const KEYCHAIN_ACCOUNT = 'google-drive-tokens';
+
 // Folder ID cache to minimize API calls
 const folderCache = new Map();
 
@@ -25,10 +36,18 @@ async function findCredentials() {
     // Project config directory
     path.join(__dirname, '../../config/google-drive-credentials.json'),
     // User home directory
-    path.join(os.homedir(), '.ad-intel', 'google-drive-credentials.json'),
-    // Downloads folder (auto-detect client_secret_*.json)
-    ...(await findClientSecretInDownloads())
+    path.join(os.homedir(), '.ad-intel', 'google-drive-credentials.json')
   ];
+
+  // Only auto-discover in Downloads folder if explicitly enabled (security best practice)
+  if (process.env.ALLOW_AUTO_DISCOVER_CREDENTIALS === 'true') {
+    const downloadCreds = await findClientSecretInDownloads();
+    if (downloadCreds.length > 0) {
+      console.warn('⚠️  WARNING: Auto-discovery of credentials in Downloads folder is enabled.');
+      console.warn('   This is a security risk. Set ALLOW_AUTO_DISCOVER_CREDENTIALS=false to disable.');
+    }
+    possiblePaths.push(...downloadCreds);
+  }
 
   for (const credPath of possiblePaths) {
     if (credPath && fsSync.existsSync(credPath)) {
@@ -47,6 +66,7 @@ async function findCredentials() {
 
 /**
  * Auto-detect client_secret_*.json files in Downloads folder
+ * SECURITY NOTE: This should only be enabled via ALLOW_AUTO_DISCOVER_CREDENTIALS=true
  * @returns {Promise<Array<string>>} - Array of potential credential paths
  */
 async function findClientSecretInDownloads() {
@@ -106,7 +126,47 @@ function findTokensPath() {
 }
 
 /**
- * Load tokens from file
+ * Load tokens from keychain (secure storage)
+ * @returns {Promise<object|null>} - Tokens object or null if not found
+ */
+async function loadTokensFromKeychain() {
+  if (!keytar) {
+    return null;
+  }
+
+  try {
+    const tokenString = await keytar.getPassword(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT);
+    if (!tokenString) {
+      return null;
+    }
+    return JSON.parse(tokenString);
+  } catch (error) {
+    console.warn('Failed to load tokens from keychain, falling back to file storage:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Save tokens to keychain (secure storage)
+ * @param {object} tokens - Tokens object
+ * @returns {Promise<boolean>} - True if successful
+ */
+async function saveTokensToKeychain(tokens) {
+  if (!keytar) {
+    return false;
+  }
+
+  try {
+    await keytar.setPassword(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT, JSON.stringify(tokens));
+    return true;
+  } catch (error) {
+    console.warn('Failed to save tokens to keychain, falling back to file storage:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Load tokens from file (fallback method)
  * @param {string} tokensPath - Path to tokens JSON
  * @returns {Promise<object|null>} - Tokens object or null if not found
  */
@@ -123,7 +183,7 @@ async function loadTokens(tokensPath) {
 }
 
 /**
- * Save tokens to file
+ * Save tokens to file (fallback method)
  * @param {string} tokensPath - Path to save tokens
  * @param {object} tokens - Tokens object
  */
@@ -140,6 +200,38 @@ async function saveTokens(tokensPath, tokens) {
   } catch (error) {
     throw new Error(`Failed to save tokens: ${error.message}`);
   }
+}
+
+/**
+ * Load tokens with automatic fallback (keychain -> file)
+ * @param {string} tokensPath - Path to tokens JSON (fallback)
+ * @returns {Promise<object|null>} - Tokens object or null if not found
+ */
+async function loadTokensWithFallback(tokensPath) {
+  // Try keychain first
+  const keychainTokens = await loadTokensFromKeychain();
+  if (keychainTokens) {
+    return keychainTokens;
+  }
+
+  // Fallback to file storage
+  return await loadTokens(tokensPath);
+}
+
+/**
+ * Save tokens with automatic fallback (keychain -> file)
+ * @param {string} tokensPath - Path to save tokens (fallback)
+ * @param {object} tokens - Tokens object
+ */
+async function saveTokensWithFallback(tokensPath, tokens) {
+  // Try keychain first
+  const savedToKeychain = await saveTokensToKeychain(tokens);
+  if (savedToKeychain) {
+    return;
+  }
+
+  // Fallback to file storage
+  await saveTokens(tokensPath, tokens);
 }
 
 /**
@@ -172,9 +264,9 @@ async function authenticate() {
   const credentials = await loadCredentials(credentialsPath);
   const oauth2Client = createOAuth2Client(credentials);
 
-  // Find and load tokens
+  // Find and load tokens (with keychain fallback)
   const tokensPath = findTokensPath();
-  const tokens = await loadTokens(tokensPath);
+  const tokens = await loadTokensWithFallback(tokensPath);
 
   if (!tokens) {
     throw new Error('Google Drive tokens not found. Run: npm run setup:gdrive');
@@ -187,7 +279,7 @@ async function authenticate() {
   if (tokens.expiry_date && Date.now() >= tokens.expiry_date) {
     try {
       const { credentials: newTokens } = await oauth2Client.refreshAccessToken();
-      await saveTokens(tokensPath, newTokens);
+      await saveTokensWithFallback(tokensPath, newTokens);
       oauth2Client.setCredentials(newTokens);
     } catch (error) {
       throw new Error('Token refresh failed. Run: npm run setup:gdrive');
@@ -488,5 +580,7 @@ module.exports = {
   findTokensPath,
   loadTokens,
   saveTokens,
+  loadTokensWithFallback,
+  saveTokensWithFallback,
   createOAuth2Client
 };

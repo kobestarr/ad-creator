@@ -9,6 +9,8 @@
     "test": "node test-combinations.js"
   },
   "dependencies": {
-    "googleapis": "^130.0.0"
+    "googleapis": "^130.0.0",
+    "uuid": "^9.0.0",
+    "keytar": "^7.9.0"
   }
 }

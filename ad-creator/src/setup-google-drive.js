@@ -12,11 +12,20 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const os = require('os');
+
+// Check if keytar is available for secure storage
+let keytar;
+try {
+  keytar = require('keytar');
+} catch (error) {
+  keytar = null;
+}
 const {
   findCredentials,
   loadCredentials,
   findTokensPath,
   saveTokens,
+  saveTokensWithFallback,
   createOAuth2Client
 } = require('./utils/google-drive');
 const { google } = require('googleapis');
@@ -196,8 +205,8 @@ async function runOAuthFlow(credentialsPath) {
       await fs.mkdir(tokensDir, { recursive: true });
     }
 
-    await saveTokens(tokensPath, tokens);
-    logSuccess(`Tokens saved to: ${tokensPath}`);
+    await saveTokensWithFallback(tokensPath, tokens);
+    logSuccess(`Tokens saved securely${keytar ? ' (using keychain)' : ' (using file storage)'}`);
 
     return { oauth2Client, tokens };
   } catch (error) {

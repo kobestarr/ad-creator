@@ -55,10 +55,12 @@
  * ============================================================================
  */
 
-const fs = require('fs');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { google } = require('googleapis');
+const { v4: uuidv4 } = require('uuid');
 const { authenticate, checkConfiguration } = require('./src/utils/google-drive');
 
 // We'll initialize drive and sheets after authentication
@@ -97,6 +99,108 @@ function ask(question) {
   });
 }
 
+/**
+ * Validate ad group name
+ * @param {string} name - Ad group name to validate
+ * @returns {string} - Validated and sanitized name
+ * @throws {Error} - If validation fails
+ */
+function validateAdGroupName(name) {
+  if (!name || typeof name !== 'string') {
+    throw new Error('Ad group name is required');
+  }
+  
+  const trimmed = name.trim();
+  
+  if (trimmed.length === 0) {
+    throw new Error('Ad group name cannot be empty');
+  }
+  
+  if (trimmed.length > 100) {
+    throw new Error('Ad group name must be 100 characters or less');
+  }
+  
+  // Allow alphanumeric, spaces, hyphens, and underscores
+  if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmed)) {
+    throw new Error('Ad group name contains invalid characters. Only letters, numbers, spaces, hyphens, and underscores are allowed.');
+  }
+  
+  return trimmed;
+}
+
+/**
+ * Validate URL format
+ * @param {string} url - URL to validate
+ * @returns {string} - Validated URL
+ * @throws {Error} - If validation fails
+ */
+function validateUrl(url) {
+  if (!url || typeof url !== 'string') {
+    throw new Error('URL is required');
+  }
+  
+  const trimmed = url.trim();
+  
+  if (trimmed.length === 0) {
+    throw new Error('URL cannot be empty');
+  }
+  
+  try {
+    const urlObj = new URL(trimmed);
+    // Only allow http and https protocols
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      throw new Error('URL must use http or https protocol');
+    }
+    return trimmed;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error('Invalid URL format');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Validate Google Sheet ID
+ * @param {string} sheetId - Sheet ID to validate
+ * @returns {string} - Validated sheet ID
+ * @throws {Error} - If validation fails
+ */
+function validateSheetId(sheetId) {
+  if (!sheetId || typeof sheetId !== 'string') {
+    throw new Error('Sheet ID is required');
+  }
+  
+  const trimmed = sheetId.trim();
+  
+  if (trimmed.length === 0) {
+    throw new Error('Sheet ID cannot be empty');
+  }
+  
+  // Google Sheet IDs are typically 44 characters, alphanumeric with hyphens/underscores
+  // But we'll be lenient and just check for reasonable format
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    throw new Error('Invalid sheet ID format. Sheet ID should contain only letters, numbers, hyphens, and underscores.');
+  }
+  
+  return trimmed;
+}
+
+/**
+ * Sanitize sheet name to prevent injection
+ * @param {string} sheetName - Sheet name to sanitize
+ * @returns {string} - Sanitized sheet name
+ */
+function sanitizeSheetName(sheetName) {
+  if (!sheetName || typeof sheetName !== 'string') {
+    return '';
+  }
+  
+  // Remove any characters that could be used for injection
+  // Allow alphanumeric, spaces, hyphens, underscores
+  return sheetName.replace(/[^a-zA-Z0-9\s_-]/g, '').trim();
+}
+
 async function main() {
   // Check Google Drive configuration
   const isConfigured = await checkConfiguration();
@@ -125,62 +229,110 @@ async function main() {
 
   log('📋 Step 1: Configuration\n', 'cyan');
 
-  // Get ad group name
-  const adGroup = await ask('  Ad Group Name (e.g., Agentforce-7-Lessons): ');
-  if (!adGroup) {
-    log('  ❌ Ad group name is required\n', 'yellow');
+  // Get ad group name with validation
+  let adGroup;
+  try {
+    const adGroupInput = await ask('  Ad Group Name (e.g., Agentforce-7-Lessons): ');
+    adGroup = validateAdGroupName(adGroupInput);
+    log('  ✅ Ad Group: ' + adGroup + '\n', 'green');
+  } catch (error) {
+    log('  ❌ ' + error.message + '\n', 'yellow');
     rl.close();
     return;
   }
 
-  log('  ✅ Ad Group: ' + adGroup + '\n', 'green');
-
-  // Get landing page URL
-  const fullLpUrl = await ask('  Full Landing Page URL: ');
-  if (!fullLpUrl) {
-    log('  ❌ Landing page URL is required\n', 'yellow');
+  // Get landing page URL with validation
+  let fullLpUrl;
+  try {
+    const urlInput = await ask('  Full Landing Page URL: ');
+    fullLpUrl = validateUrl(urlInput);
+  } catch (error) {
+    log('  ❌ ' + error.message + '\n', 'yellow');
     rl.close();
     return;
   }
 
-  // Generate mini LP URL
-  const miniLpUrl = fullLpUrl.replace('/agentforce-360/', '/agentforce-360-min/').replace('/?', '-min/?');
-  log('  ✅ Mini LP URL: ' + miniLpUrl + '\n', 'green');
+  // Generate mini LP URL using robust URL parsing
+  let miniLpUrl;
+  try {
+    miniLpUrl = createMiniLpUrl(fullLpUrl);
+    log('  ✅ Mini LP URL: ' + miniLpUrl + '\n', 'green');
+  } catch (error) {
+    log('  ⚠️  Could not generate mini LP URL: ' + error.message + '\n', 'yellow');
+    log('  Using original URL for mini LP\n', 'yellow');
+    miniLpUrl = fullLpUrl;
+  }
 
-  // Get subtheme (optional)
-  const subTheme = await ask('  Sub-theme (optional, press Enter): ') || '';
+  // Get subtheme (optional) with validation
+  let subTheme = '';
+  try {
+    const subThemeInput = await ask('  Sub-theme (optional, press Enter): ') || '';
+    if (subThemeInput) {
+      subTheme = validateAdGroupName(subThemeInput); // Reuse same validation
+    }
+  } catch (error) {
+    log('  ⚠️  Invalid sub-theme: ' + error.message + '. Using empty sub-theme.\n', 'yellow');
+    subTheme = '';
+  }
   const subThemeStr = subTheme ? ' | ' + subTheme : '';
 
   log('\n📁 Step 2: Google Drive Configuration\n', 'cyan');
 
-  // Get Drive folder
+  // Get Drive folder with path.join for safety
   const baseFolder = await ask('  Drive Folder (default: Bluprintx/Ads/Images): ') || 'Bluprintx/Ads/Images';
-  const imageFolder = subTheme ? baseFolder + '/' + adGroup + '/' + subTheme : baseFolder + '/' + adGroup;
+  const imageFolder = subTheme 
+    ? path.join(baseFolder, adGroup, subTheme)
+    : path.join(baseFolder, adGroup);
 
   log('  📂 Images folder: ' + imageFolder + '\n', 'blue');
 
   log('📊 Step 3: Google Sheets Configuration\n', 'cyan');
 
-  // Get Sheet ID
-  const sheetId = await ask('  Google Sheet ID: ');
-  if (!sheetId) {
-    log('  ⚠️  No sheet provided - using example data\n', 'yellow');
+  // Get Sheet ID with validation
+  let sheetId = '';
+  const sheetIdInput = await ask('  Google Sheet ID: ');
+  if (sheetIdInput) {
+    try {
+      sheetId = validateSheetId(sheetIdInput);
+      log('  ✅ Sheet ID: ' + sheetId + '\n', 'green');
+    } catch (error) {
+      log('  ⚠️  Invalid sheet ID: ' + error.message + '. Using example data.\n', 'yellow');
+      sheetId = '';
+    }
   } else {
-    log('  ✅ Sheet ID: ' + sheetId + '\n', 'green');
+    log('  ⚠️  No sheet provided - using example data\n', 'yellow');
   }
 
   log('🔄 Step 4: Processing\n', 'cyan');
   rl.close();
 
-  // Create output directory
-  const outputDir = './output/' + adGroup;
-  fs.mkdirSync(outputDir, { recursive: true });
-  fs.mkdirSync(outputDir + '/ads', { recursive: true });
-  fs.mkdirSync(outputDir + '/images', { recursive: true });
+  // Create output directory using path.join and async operations
+  const outputDir = path.join('./output', adGroup);
+  try {
+    await fs.mkdir(outputDir, { recursive: true });
+    await fs.mkdir(path.join(outputDir, 'ads'), { recursive: true });
+    await fs.mkdir(path.join(outputDir, 'images'), { recursive: true });
+  } catch (error) {
+    log('\n❌ Failed to create output directory: ' + error.message + '\n', 'yellow');
+    throw error;
+  }
 
-  // Step 1: Fetch images from Drive
+  // Step 1: Fetch images from Drive with error handling
   log('  📥 Fetching images from Drive...\n', 'blue');
-  const images = sheetId ? await fetchImagesFromDrive(imageFolder) : [];
+  let images = [];
+  if (sheetId) {
+    try {
+      images = await fetchImagesFromDrive(imageFolder);
+    } catch (error) {
+      log('  ⚠️  Error fetching images: ' + error.message + '\n', 'yellow');
+      // Re-throw critical network errors
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        throw new Error('Network error: Unable to connect to Google Drive API. Please check your internet connection.');
+      }
+      // For other errors, continue with example images
+      images = [];
+    }
+  }
   
   if (images.length === 0) {
     log('  ⚠️  No images found in Drive, using example images\n', 'yellow');
@@ -195,9 +347,22 @@ async function main() {
 
   log('  ✅ Found ' + images.length + ' images\n', 'green');
 
-  // Step 2: Fetch text from Sheets or use example
+  // Step 2: Fetch text from Sheets or use example with error handling
   log('  📥 Fetching text variations...\n', 'blue');
-  const textVariations = sheetId ? await fetchTextFromSheet(sheetId) : getExampleText();
+  let textVariations;
+  if (sheetId) {
+    try {
+      textVariations = await fetchTextFromSheet(sheetId);
+      if (!textVariations || Object.keys(textVariations).length === 0) {
+        throw new Error('No data found in sheet');
+      }
+    } catch (error) {
+      log('  ⚠️  Error reading sheet: ' + error.message + '. Using example data.\n', 'yellow');
+      textVariations = getExampleText();
+    }
+  } else {
+    textVariations = getExampleText();
+  }
 
   log('  ✅ Text loaded:\n', 'green');
   Object.keys(textVariations).forEach(key => {
@@ -215,9 +380,15 @@ async function main() {
 
   log('  ✅ Generated ' + combinations.length + ' ad variations\n', 'green');
 
-  // Step 4: Save everything
+  // Step 4: Save everything with error handling
   log('  💾 Saving to ' + outputDir + '...\n', 'blue');
-  await saveCombinations(combinations, outputDir, { adGroup, subThemeStr, fullLpUrl, miniLpUrl });
+  try {
+    await saveCombinations(combinations, outputDir, { adGroup, subThemeStr, fullLpUrl, miniLpUrl });
+  } catch (error) {
+    log('\n❌ Failed to save combinations: ' + error.message + '\n', 'yellow');
+    console.error('Save error:', error);
+    throw error;
+  }
 
   // Final summary
   console.log('');
@@ -238,6 +409,41 @@ async function main() {
   console.log('    ' + adGroup + subThemeStr + ' | {Theme} | Img-V{1-3}_FULL_LP');
   console.log('    ' + adGroup + subThemeStr + ' | {Theme} | Img-V{1-3}_Mini_LP');
   console.log('');
+}
+
+/**
+ * Create mini landing page URL from full URL
+ * @param {string} fullUrl - Full landing page URL
+ * @param {string} suffix - Suffix to add (default: '-min')
+ * @returns {string} - Mini LP URL
+ * @throws {Error} - If URL is invalid
+ */
+function createMiniLpUrl(fullUrl, suffix = '-min') {
+  try {
+    const url = new URL(fullUrl);
+    const pathname = url.pathname;
+    
+    // Add suffix before the last segment or at the end
+    if (pathname.endsWith('/')) {
+      url.pathname = pathname.slice(0, -1) + suffix + '/';
+    } else {
+      const parts = pathname.split('/').filter(p => p);
+      if (parts.length > 0) {
+        const lastPart = parts[parts.length - 1];
+        parts[parts.length - 1] = lastPart + suffix;
+        url.pathname = '/' + parts.join('/');
+      } else {
+        url.pathname = suffix;
+      }
+    }
+    
+    return url.toString();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(`Invalid URL format: ${fullUrl}`);
+    }
+    throw error;
+  }
 }
 
 async function fetchImagesFromDrive(folderPath) {
@@ -269,8 +475,9 @@ async function fetchImagesFromDrive(folderPath) {
       isShortcut: file.mimeType === 'application/vnd.google-apps.shortcut'
     }));
   } catch (error) {
-    log('  ❌ Error fetching images: ' + error.message + '\n', 'yellow');
-    return [];
+    // Log error with context
+    console.error('Error fetching images from Drive:', error);
+    throw error; // Re-throw to let caller handle
   }
 }
 
@@ -281,23 +488,29 @@ async function fetchTextFromSheet(sheetId) {
     const variations = {};
 
     for (const sheetName of sheetsList) {
+      // Sanitize sheet name to prevent injection
+      const sanitizedName = sanitizeSheetName(sheetName);
+      if (!sanitizedName) {
+        continue; // Skip invalid sheet names
+      }
+
       const result = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: sheetName + '!A:A'
+        range: sanitizedName + '!A:A'
       });
 
       if (result.data.values && result.data.values.length > 1) {
         const values = result.data.values.slice(1).map(row => row[0]).filter(v => v);
         if (values.length > 0) {
-          variations[sheetName.toLowerCase()] = values;
+          variations[sanitizedName.toLowerCase()] = values;
         }
       }
     }
 
     return variations;
   } catch (error) {
-    log('  ⚠️  Error reading sheet: ' + error.message + '\n', 'yellow');
-    return {};
+    console.error('Error reading Google Sheet:', error);
+    throw error; // Re-throw to let caller handle
   }
 }
 
@@ -349,7 +562,7 @@ function generateCombinations(images, textVariations, options) {
             const adTitle = adGroup + subTheme + themeStr + ' | ' + image.name + '_' + lp.type;
             
             combinations.push({
-              id: 'ad_' + Date.now() + '_' + count,
+              id: 'ad_' + uuidv4(),
               ad_title: adTitle,
               ad_group: adGroup,
               sub_theme: subTheme.replace(' | ', ''),
@@ -390,7 +603,13 @@ async function saveCombinations(combinations, outputDir, options) {
     combinations: combinations
   };
 
-  fs.writeFileSync(outputDir + '/manifest.json', JSON.stringify(manifest, null, 2));
+  const SUMMARY_PREVIEW_LIMIT = 20;
+
+  // Save manifest using async file operations
+  await fs.writeFile(
+    path.join(outputDir, 'manifest.json'),
+    JSON.stringify(manifest, null, 2)
+  );
 
   // Save summary
   let summary = 'Ad Creative Summary\n';
@@ -405,23 +624,32 @@ async function saveCombinations(combinations, outputDir, options) {
   summary += 'Generated Ads\n';
   summary += '═══════════════════════════════════════\n\n';
 
-  combinations.slice(0, 20).forEach((ad, i) => {
+  combinations.slice(0, SUMMARY_PREVIEW_LIMIT).forEach((ad, i) => {
     summary += (i + 1) + '. ' + ad.ad_title + '\n';
     summary += '   Headline: ' + ad.headline + '\n';
     summary += '   CTA: ' + ad.cta + '\n';
     summary += '   LP: ' + ad.lp_variant + '\n\n';
   });
 
-  if (combinations.length > 20) {
-    summary += '... and ' + (combinations.length - 20) + ' more variations\n';
+  if (combinations.length > SUMMARY_PREVIEW_LIMIT) {
+    summary += '... and ' + (combinations.length - SUMMARY_PREVIEW_LIMIT) + ' more variations\n';
   }
 
-  fs.writeFileSync(outputDir + '/summary.txt', summary);
+  await fs.writeFile(path.join(outputDir, 'summary.txt'), summary);
 
-  // Save individual ad files
-  combinations.forEach(ad => {
-    fs.writeFileSync(outputDir + '/ads/' + ad.id + '.json', JSON.stringify(ad, null, 2));
-  });
+  // Save individual ad files using async operations with concurrency control
+  const writePromises = combinations.map(ad =>
+    fs.writeFile(
+      path.join(outputDir, 'ads', ad.id + '.json'),
+      JSON.stringify(ad, null, 2)
+    )
+  );
+
+  await Promise.all(writePromises);
 }
 
-main().catch(console.error);
+main().catch(error => {
+  console.error('\n❌ Fatal error:', error.message);
+  console.error(error);
+  process.exit(1);
+});

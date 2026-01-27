@@ -9,6 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 console.log('==============================================');
 console.log('🎨 Ad Creative Generation - Example Run');
@@ -62,7 +63,7 @@ for (const image of exampleImages) {
     for (const cta of exampleText.ctas) {
       for (const description of exampleText.descriptions) {
         combinations.push({
-          id: 'ad_' + Date.now() + '_' + count,
+          id: 'ad_' + uuidv4(),
           image: image,
           headline: headline,
           cta: cta,
