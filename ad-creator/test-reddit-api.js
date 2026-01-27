@@ -59,7 +59,7 @@ async function test() {
 
     // Get OAuth token
     log('\n3️⃣ Getting OAuth access token...', 'cyan');
-    const accessToken = await getAccessToken(credentials);
+    const accessToken = await getAccessToken(clientName);
 
     log(`   ✅ Token obtained`, 'green');
     log(`   Token type: Bearer`, 'reset');

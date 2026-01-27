@@ -14,7 +14,7 @@ const path = require('path');
 const os = require('os');
 
 const BASE_URL = 'ads-api.reddit.com';
-const API_PATH = '/api/v2.0';
+const API_PATH = '/api/v3';
 
 /**
  * Find client credentials
@@ -361,7 +361,7 @@ async function apiRequest(method, endpoint, accessToken, options = {}) {
  */
 async function getAdAccount(clientName, accountId) {
   const accessToken = await getAccessToken(clientName);
-  return await apiRequest('GET', `/accounts/${accountId}`, accessToken);
+  return await apiRequest('GET', `/ad_accounts/${accountId}`, accessToken);
 }
 
 /**
@@ -371,7 +371,7 @@ async function getAdAccount(clientName, accountId) {
  */
 async function listAdAccounts(clientName) {
   const accessToken = await getAccessToken(clientName);
-  return await apiRequest('GET', '/accounts', accessToken);
+  return await apiRequest('GET', '/ad_accounts', accessToken);
 }
 
 /**
@@ -383,7 +383,7 @@ async function listAdAccounts(clientName) {
  */
 async function createCampaign(clientName, accountId, campaign) {
   const accessToken = await getAccessToken(clientName);
-  return await apiRequest('POST', `/accounts/${accountId}/campaigns`, accessToken, {
+  return await apiRequest('POST', `/ad_accounts/${accountId}/campaigns`, accessToken, {
     body: campaign
   });
 }
@@ -402,7 +402,7 @@ async function uploadImage(clientName, accountId, imagePath) {
   // This is a simplified version - may need to use form-data library
   const imageData = await fs.readFile(imagePath);
 
-  return await apiRequest('POST', `/accounts/${accountId}/creatives`, accessToken, {
+  return await apiRequest('POST', `/ad_accounts/${accountId}/creatives`, accessToken, {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
@@ -420,7 +420,7 @@ async function uploadImage(clientName, accountId, imagePath) {
  */
 async function createAd(clientName, accountId, adGroupId, ad) {
   const accessToken = await getAccessToken(clientName);
-  return await apiRequest('POST', `/accounts/${accountId}/ad_groups/${adGroupId}/ads`, accessToken, {
+  return await apiRequest('POST', `/ad_accounts/${accountId}/ad_groups/${adGroupId}/ads`, accessToken, {
     body: ad
   });
 }
