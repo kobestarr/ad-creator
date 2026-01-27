@@ -2,11 +2,13 @@
 
 /**
  * Reddit Ad Creator - Full Pipeline
- * 
+ *
  * Creates posts + ads from Google Sheets data
- * 
+ *
  * Usage: node create-post-and-ad.js --client bluprintx --subreddit salesforce --headline "..." --body "..." --url "..."
  */
+
+require('dotenv').config();
 
 const { loadCredentials, getAdAccount } = require('./lib/reddit-api');
 const { getAuthorizationUrl, exchangeCodeForToken, saveNativeTokens, getNativeAccessToken } = require('./lib/reddit-native-oauth');
