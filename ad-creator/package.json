@@ -11,8 +11,9 @@
     "test": "node test-combinations.js"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "googleapis": "^130.0.0",
-    "uuid": "^9.0.0",
-    "keytar": "^7.9.0"
+    "keytar": "^7.9.0",
+    "uuid": "^9.0.0"
   }
 }
