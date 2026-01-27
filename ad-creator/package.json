@@ -5,6 +5,7 @@
   "main": "ad-creator.js",
   "scripts": {
     "run": "node ad-creator.js",
+    "setup:gdrive": "node src/setup-google-drive.js",
     "test": "node test-combinations.js"
   },
   "dependencies": {

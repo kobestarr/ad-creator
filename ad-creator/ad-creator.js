@@ -59,31 +59,10 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { google } = require('googleapis');
+const { authenticate, checkConfiguration } = require('./src/utils/google-drive');
 
-// Load config
-const gdriveCredentialsPath = process.env.HOME + '/.clawdbot/gdrive/credentials.json';
-const gdriveTokensPath = process.env.HOME + '/.clawdbot/gdrive/tokens/default.json';
-
-if (!fs.existsSync(gdriveCredentialsPath) || !fs.existsSync(gdriveTokensPath)) {
-  log('\n⚠️  Google Drive credentials not found.\n', 'yellow');
-  log('Run: clawdbot agents add google-drive\n', 'blue');
-  log('Or set up OAuth at: https://console.cloud.google.com/apis/credentials\n', 'blue');
-  process.exit(1);
-}
-
-const config = JSON.parse(fs.readFileSync(gdriveCredentialsPath, 'utf8'));
-const tokens = JSON.parse(fs.readFileSync(gdriveTokensPath, 'utf8'));
-
-// Setup OAuth
-const oauth2Client = new google.auth.OAuth2(
-  config.installed.client_id,
-  config.installed.client_secret,
-  'http://localhost:3000/oauth2callback'
-);
-oauth2Client.setCredentials(tokens);
-
-const drive = google.drive({ version: 'v3', auth: oauth2Client });
-const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+// We'll initialize drive and sheets after authentication
+let drive, sheets;
 
 // UI colors
 const colors = {
@@ -119,6 +98,31 @@ function ask(question) {
 }
 
 async function main() {
+  // Check Google Drive configuration
+  const isConfigured = await checkConfiguration();
+  if (!isConfigured) {
+    log('\n⚠️  Google Drive not configured\n', 'yellow');
+    log('Run: npm run setup:gdrive\n', 'blue');
+    log('Or manually set up OAuth at: https://console.cloud.google.com/apis/credentials\n', 'blue');
+    process.exit(1);
+  }
+
+  // Authenticate and initialize Drive/Sheets clients
+  try {
+    const driveClient = await authenticate();
+    drive = driveClient;
+
+    // Get the auth client from drive instance
+    const auth = drive.context._options.auth;
+    sheets = google.sheets({ version: 'v4', auth: auth });
+
+    log('✅ Google Drive authenticated\n', 'green');
+  } catch (error) {
+    log('\n❌ Authentication failed: ' + error.message + '\n', 'yellow');
+    log('Run: npm run setup:gdrive\n', 'blue');
+    process.exit(1);
+  }
+
   log('📋 Step 1: Configuration\n', 'cyan');
 
   // Get ad group name

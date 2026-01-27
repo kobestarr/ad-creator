@@ -3,3 +3,11 @@ output/
 .env
 *.log
 .DS_Store
+
+# Google Drive credentials (sensitive)
+config/google-drive-credentials.json
+tokens.json
+.ad-intel/
+
+# Client secrets
+**/client_secret_*.json
