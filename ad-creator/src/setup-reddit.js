@@ -8,6 +8,8 @@
  */
 
 const readline = require('readline');
+const http = require('http');
+const { execSync } = require('child_process');
 const {
   saveCredentials,
   saveTokens,
@@ -80,6 +82,86 @@ function ask(question, defaultVal = '') {
 }
 
 /**
+ * Open URL in default browser
+ */
+function openBrowser(url) {
+  try {
+    const platform = process.platform;
+    if (platform === 'darwin') {
+      execSync(`open "${url}"`, { stdio: 'ignore' });
+    } else if (platform === 'win32') {
+      execSync(`start "${url}"`, { stdio: 'ignore', shell: true });
+    } else {
+      execSync(`xdg-open "${url}"`, { stdio: 'ignore' });
+    }
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Start local server to catch OAuth redirect
+ * @param {number} port - Port to listen on (default 3000)
+ * @returns {Promise<string>} - Authorization code from redirect
+ */
+function startCallbackServer(port = 3000) {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      const url = new URL(req.url, `http://localhost:${port}`);
+
+      if (url.pathname === '/callback') {
+        const code = url.searchParams.get('code');
+        const error = url.searchParams.get('error');
+
+        if (error) {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`
+            <html>
+              <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+                <h1 style="color: #dc3545;">❌ Authorization Failed</h1>
+                <p>Error: ${error}</p>
+                <p>You can close this window and try again.</p>
+              </body>
+            </html>
+          `);
+          server.close();
+          reject(new Error(`OAuth error: ${error}`));
+        } else if (code) {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`
+            <html>
+              <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+                <h1 style="color: #28a745;">✅ Authorization Successful!</h1>
+                <p>You can close this window and return to the terminal.</p>
+                <script>setTimeout(() => window.close(), 3000);</script>
+              </body>
+            </html>
+          `);
+          server.close();
+          resolve(code);
+        } else {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('Missing authorization code');
+          server.close();
+          reject(new Error('No authorization code received'));
+        }
+      }
+    });
+
+    server.listen(port, () => {
+      console.log(''); // Empty line for spacing
+    });
+
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      server.close();
+      reject(new Error('OAuth timeout - no response received within 5 minutes'));
+    }, 5 * 60 * 1000);
+  });
+}
+
+/**
  * Main setup function
  */
 async function setup() {
@@ -137,7 +219,7 @@ async function setup() {
       process.exit(1);
     }
 
-    const redirect_uri = await ask('Redirect URI', 'http://localhost:3000/callback');
+    const redirect_uri = await ask('Redirect URI (use localhost for automatic setup)', 'http://localhost:3000/callback');
 
     const user_agent = await ask('User Agent', `ad-creator/${clientId}/1.0`);
 
@@ -191,28 +273,85 @@ async function setup() {
     // Generate authorization URL
     const authUrl = getAuthorizationUrl(credentials);
 
-    log('📋 Copy this authorization URL and open it in your browser:', 'cyan');
-    console.log('');
-    console.log(colors.bright + authUrl + colors.reset);
-    console.log('');
+    // Check if redirect_uri is localhost (can use automatic flow)
+    const isLocalhost = redirect_uri.includes('localhost') || redirect_uri.includes('127.0.0.1');
+    let authCode;
 
-    log('Steps:', 'yellow');
-    log('  1. Open the URL above in your browser', 'dim');
-    log('  2. Log in to Reddit if needed', 'dim');
-    log('  3. Click "Allow" to authorize the app', 'dim');
-    log('  4. You\'ll be redirected to your redirect URI', 'dim');
-    log('  5. Copy the "code" parameter from the redirect URL', 'dim');
-    console.log('');
+    if (isLocalhost) {
+      // Automatic flow with local server
+      log('🚀 Automatic OAuth Flow', 'cyan');
+      console.log('');
+      log('Steps:', 'yellow');
+      log('  1. Your browser will open automatically', 'dim');
+      log('  2. Log in to Reddit if needed', 'dim');
+      log('  3. Click "Allow" to authorize', 'dim');
+      log('  4. You\'ll be redirected back automatically', 'dim');
+      console.log('');
 
-    log('Example redirect URL:', 'yellow');
-    log(`  ${redirect_uri}?state=abc123&code=PASTE_THIS_CODE_HERE`, 'dim');
-    console.log('');
+      const urlObj = new URL(redirect_uri);
+      const port = urlObj.port || 3000;
 
-    const authCode = await ask('Paste the authorization code here');
+      log(`Starting local server on port ${port}...`, 'dim');
 
-    if (!authCode) {
-      logError('Authorization code is required');
-      process.exit(1);
+      // Start callback server in background
+      const serverPromise = startCallbackServer(port);
+
+      // Wait a moment for server to start
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      log('Opening browser...', 'dim');
+      const opened = openBrowser(authUrl);
+
+      if (!opened) {
+        logWarning('Could not open browser automatically');
+        log('\n📋 Please open this URL manually:', 'cyan');
+        console.log(colors.bright + authUrl + colors.reset);
+        console.log('');
+      } else {
+        logSuccess('Browser opened - waiting for authorization...');
+      }
+
+      console.log('');
+      log('⏳ Waiting for authorization (timeout: 5 minutes)...', 'yellow');
+
+      try {
+        authCode = await serverPromise;
+        console.log('');
+        logSuccess('Authorization code received!');
+      } catch (error) {
+        console.log('');
+        logError(error.message);
+        process.exit(1);
+      }
+    } else {
+      // Manual flow for non-localhost redirects
+      log('📋 Manual OAuth Flow', 'cyan');
+      console.log('');
+      log('Your redirect URI is not localhost, so you\'ll need to manually copy the code.', 'dim');
+      console.log('');
+
+      log('Authorization URL:', 'cyan');
+      console.log(colors.bright + authUrl + colors.reset);
+      console.log('');
+
+      log('Steps:', 'yellow');
+      log('  1. Open the URL above in your browser', 'dim');
+      log('  2. Log in to Reddit if needed', 'dim');
+      log('  3. Click "Allow" to authorize the app', 'dim');
+      log('  4. You\'ll be redirected to your redirect URI', 'dim');
+      log('  5. Copy the "code" parameter from the redirect URL', 'dim');
+      console.log('');
+
+      log('Example redirect URL:', 'yellow');
+      log(`  ${redirect_uri}?state=abc123&code=PASTE_THIS_CODE_HERE`, 'dim');
+      console.log('');
+
+      authCode = await ask('Paste the authorization code here');
+
+      if (!authCode) {
+        logError('Authorization code is required');
+        process.exit(1);
+      }
     }
 
     // Step 7: Exchange code for tokens
