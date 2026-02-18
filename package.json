@@ -1,0 +1,23 @@
+{
+  "name": "clawd",
+  "version": "1.0.0",
+  "description": "Clawd workspace - automation and business orchestration",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kobestarr/clawd.git"
+  },
+  "keywords": [],
+  "author": "kobestarr",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kobestarr/clawd/issues"
+  },
+  "homepage": "https://github.com/kobestarr/clawd#readme",
+  "dependencies": {
+    "playwright": "^1.58.1"
+  }
+}

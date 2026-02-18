@@ -40,3 +40,13 @@ test-data/
 tmp/
 temp/
 *.tmp
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Sub-project repos (managed separately)
+ad-intel/
+ad-creator/
+transcription-automation/
