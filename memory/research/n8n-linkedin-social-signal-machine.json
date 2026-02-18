@@ -1,0 +1,22 @@
+{
+  "name": "LinkedIn Social Signal Lead Machine",
+  "description": "n8n automation for Bluprintx - Scrape LinkedIn comments → AI qualify → Find email → Personalized outreach",
+  "status": "BLUEPRINT_READY",
+  "adapted_for": "Bluprintx",
+  "research_date": "2026-02-01",
+  "json_attached": true,
+  "key_integrations": [
+    "Apify (LinkedIn scraping)",
+    "Icypeas (email finder)",
+    "Million Verifier (email verification)",
+    "Google Sheets (CRM)",
+    "AimFox (LinkedIn campaigns)",
+    "Instantly AI (email campaigns)",
+    "Perplexity (research)",
+    "OpenAI/Anthropic (AI qualification)"
+  ],
+  "client_value": "Automated lead generation from LinkedIn social signals",
+  "brownie_point_potential": "HIGH - Pre-built workflow, just adapt for client",
+  "implementation_effort": "LOW - Workflow exists, needs configuration",
+  "revenue_potential": "HIGH - Can be sold as service or used internally"
+}

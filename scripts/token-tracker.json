@@ -1,0 +1,9 @@
+{
+  "session_start": "2026-01-26T05:15:16.373Z",
+  "session_tokens": 1100,
+  "total_tokens": 1100,
+  "last_reset": null,
+  "thresh_crossed": [
+    1000
+  ]
+}

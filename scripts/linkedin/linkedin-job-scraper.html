@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Job Scraper - Bluprintx</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0077b5, #00a0dc);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .search-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #0077b5;
+            box-shadow: 0 0 0 3px rgba(0, 119, 181, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn {
+            background: #0077b5;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #005885;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .status-section {
+            background: #fff;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            min-height: 100px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: #28a745;
+        }
+
+        .status-dot.error {
+            background: #dc3545;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0077b5, #00a0dc);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-count {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0077b5;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .job-title {
+            font-weight: 600;
+            color: #0077b5;
+        }
+
+        .company {
+            color: #666;
+        }
+
+        .location {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #f5c6cb;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #c3e6cb;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>LinkedIn Job Scraper</h1>
+            <p>Find your next opportunity with Bluprintx - Simple, Fast, Effective</p>
+        </div>
+
+        <div class="content">
+            <!-- Search Section -->
+            <div class="search-section">
+                <h2 style="margin-bottom: 20px; color: #333;">Job Search Criteria</h2>
+                <form id="searchForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="jobTitle">Job Title</label>
+                            <input type="text" id="jobTitle" placeholder="e.g., Software Engineer, Product Manager" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="location">Location</label>
+                            <input type="text" id="location" placeholder="e.g., New York, Remote, San Francisco" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="experienceLevel">Experience Level</label>
+                            <select id="experienceLevel">
+                                <option value="">Any Level</option>
+                                <option value="entry-level">Entry Level</option>
+                                <option value="mid-level">Mid Level</option>
+                                <option value="senior-level">Senior Level</option>
+                                <option value="executive">Executive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="jobType">Job Type</label>
+                            <select id="jobType">
+                                <option value="">Any Type</option>
+                                <option value="full-time">Full-time</option>
+                                <option value="part-time">Part-time</option>
+                                <option value="contract">Contract</option>
+                                <option value="internship">Internship</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="maxResults">Maximum Results</label>
+                            <select id="maxResults">
+                                <option value="25">25 jobs</option>
+                                <option value="50" selected>50 jobs</option>
+                                <option value="100">100 jobs</option>
+                                <option value="200">200 jobs</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="postedWithin">Posted Within</label>
+                            <select id="postedWithin">
+                                <option value="">Any time</option>
+                                <option value="24h">Past 24 hours</option>
+                                <option value="week">Past week</option>
+                                <option value="month">Past month</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" id="searchBtn">
+                        <span id="btnText">🔍 Start Job Search</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Status Section -->
+            <div class="status-section" id="statusSection" style="display: none;">
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Initializing...</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="statusDetails"></div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection">
+                <div class="results-header">
+                    <h2>Job Results</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="results-count" id="resultsCount">0 jobs found</div>
+                        <button class="btn btn-secondary" id="exportBtn">
+                            📊 Export CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Job Title</th>
+                                <th>Company</th>
+                                <th>Location</th>
+                                <th>Posted</th>
+                                <th>Level</th>
+                                <th>Type</th>
+                                <th>Link</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Replace with your actual Apify details
+        const APIFY_CONFIG = {
+            API_TOKEN: 'YOUR_APIFY_API_TOKEN', // Replace with your Apify API token
+            ACTOR_ID: 'YOUR_LINKEDIN_SCRAPER_ACTOR_ID', // Replace with your LinkedIn scraper actor ID
+            BASE_URL: 'https://api.apify.com/v2'
+        };
+
+        let currentJobData = [];
+        let jobStatusInterval = null;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('searchForm').addEventListener('submit', handleSearch);
+            document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+        }
+
+        async function handleSearch(e) {
+            e.preventDefault();
+            
+            const formData = getFormData();
+            if (!formData.jobTitle || !formData.location) {
+                showError('Please fill in both job title and location');
+                return;
+            }
+
+            // Reset UI
+            resetUI();
+            showStatus('Starting job search...', 'active');
+            
+            try {
+                // Start the Apify job
+                const jobId = await startApifyJob(formData);
+                
+                // Monitor job progress
+                monitorJobProgress(jobId);
+                
+            } catch (error) {
+                showError(`Failed to start job search: ${error.message}`);
+                showStatus('Search failed', 'error');
+            }
+        }
+
+        function getFormData() {
+            return {
+                jobTitle: document.getElementById('jobTitle').value.trim(),
+                location: document.getElementById('location').value.trim(),
+                experienceLevel: document.getElementById('experienceLevel').value,
+                jobType: document.getElementById('jobType').value,
+                maxResults: parseInt(document.getElementById('maxResults').value),
+                postedWithin: document.getElementById('postedWithin').value
+            };
+        }
+
+        async function startApifyJob(formData) {
+            showStatus('Preparing search parameters...', 'active');
+            
+            // Build the search URL for LinkedIn
+            const searchUrl = buildLinkedInSearchUrl(formData);
+            
+            // Create actor input
+            const input = {
+                startUrls: [{ url: searchUrl }],
+                maxItems: formData.maxResults,
+                proxyConfiguration: { useApifyProxy: true },
+                extendOutputFunction: `
+                    async ({ data, item, page, request, customData }) => {
+                        return item;
+                    }
+                `,
+                maxConcurrency: 10
+            };
+
+            // Start the actor
+            const response = await fetch(`${APIFY_CONFIG.BASE_URL}/acts/${APIFY_CONFIG.ACTOR_ID}/runs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${APIFY_CONFIG.API_TOKEN}`
+                },
+                body: JSON.stringify({
+                    runInput: input,
+                    memoryMbytes: 4096,
+                    timeoutSecs: 3600
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to start actor: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            return result.data.id;
+        }
+
+        function buildLinkedInSearchUrl(formData) {
+            const baseUrl = 'https://www.linkedin.com/jobs/search/';
+            const params = new URLSearchParams();
+            
+            // Add keywords
+            params.append('keywords', formData.jobTitle);
+            
+            // Add location
+            params.append('location', formData.location);
+            
+            // Add experience level filters
+            if (formData.experienceLevel) {
+                const expMapping = {
+                    'entry-level': '1,2',
+                    'mid-level': '3,4',
+                    'senior-level': '5,6',
+                    'executive': '7,8'
+                };
+                if (expMapping[formData.experienceLevel]) {
+                    params.append('f_E', expMapping[formData.experienceLevel]);
+                }
+            }
+            
+            // Add job type filters
+            if (formData.jobType) {
+                const typeMapping = {
+                    'full-time': 'F',
+                    'part-time': 'P',
+                    'contract': 'C',
+                    'internship': 'I'
+                };
+                if (typeMapping[formData.jobType]) {
+                    params.append('f_JT', typeMapping[formData.jobType]);
+                }
+            }
+            
+            // Add posted within filter
+            if (formData.postedWithin) {
+                const postedMapping = {
+                    '24h': 'r86400',
+                    'week': 'r604800',
+                    'month': 'r2592000'
+                };
+                if (postedMapping[formData.postedWithin]) {
+                    params.append('f_TPR', postedMapping[formData.postedWithin]);
+                }
+            }
+            
+            // Add sorting (most recent)
+            params.append('sortBy', 'DD');
+            
+            return `${baseUrl}?${params.toString()}`;
+        }
+
+        async function monitorJobProgress(jobId) {
+            let attempts = 0;
+            const maxAttempts = 120; // 10 minutes with 5-second intervals
+            
+            jobStatusInterval = setInterval(async () => {
+                try {
+                    attempts++;
+                    
+                    const response = await fetch(`${APIFY_CONFIG.BASE_URL}/actor-runs/${jobId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${APIFY_CONFIG.API_TOKEN}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to get job status: ${response.statusText}`);
+                    }
+                    
+                    const run = await response.json();
+                    const status = run.data.status;
+                    
+                    updateProgress(run.data);
+                    
+                    if (status === 'SUCCEEDED') {
+                        clearInterval(jobStatusInterval);
+                        await fetchJobResults(jobId);
+                    } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED_OUT') {
+                        clearInterval(jobStatusInterval);
+                        showError(`Job ${status.toLowerCase()}`);
+                        showStatus(`Search ${status.toLowerCase()}`, 'error');
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(jobStatusInterval);
+                        showError('Job timed out after 10 minutes');
+                        showStatus('Search timed out', 'error');
+                    }
+                    
+                } catch (error) {
+                    clearInterval(jobStatusInterval);
+                    showError(`Failed to monitor job: ${error.message}`);
+                    showStatus('Monitoring failed', 'error');
+                }
+            }, 5000);
+        }
+
+        function updateProgress(runData) {
+            const status = runData.status;
+            const stats = runData.stats || {};
+            
+            let progress = 0;
+            let statusText = 'Initializing...';
+            
+            if (status === 'RUNNING') {
+                const pages = stats.pagesFinished || 0;
+                const totalPages = stats.pagesTotal || 1;
+                progress = Math.min((pages / totalPages) * 100, 95);
+                statusText = `Searching... Found ${stats.itemsTotal || 0} jobs`;
+            } else if (status === 'SUCCEEDED') {
+                progress = 100;
+                statusText = 'Search completed!';
+            }
+            
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            document.getElementById('statusText').textContent = statusText;
+        }
+
+        async function fetchJobResults(jobId) {
+            showStatus('Fetching results...', 'active');
+            
+            try {
+                const response = await fetch(`${APIFY_CONFIG.BASE_URL}/actor-runs/${jobId}/dataset/items`, {
+                    headers: {
+                        'Authorization': `Bearer ${APIFY_CONFIG.API_TOKEN}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch results: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                currentJobData = processJobData(data);
+                
+                displayResults(currentJobData);
+                showStatus(`Found ${currentJobData.length} jobs!`, 'active');
+                
+            } catch (error) {
+                showError(`Failed to fetch results: ${error.message}`);
+                showStatus('Failed to get results', 'error');
+            }
+        }
+
+        function processJobData(rawData) {
+            return rawData.map(job => ({
+                title: job.title || 'N/A',
+                company: job.company || job.companyName || 'N/A',
+                location: job.location || job.jobLocation || 'N/A',
+                posted: job.postedTime || job.postedAt || 'N/A',
+                level: job.experienceLevel || job.seniorityLevel || 'N/A',
+                type: job.employmentType || job.jobType || 'N/A',
+                url: job.url || job.jobUrl || '#',
+                description: job.description || job.jobDescription || ''
+            }));
+        }
+
+        function displayResults(jobs) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsCount = document.getElementById('resultsCount');
+            const resultsBody = document.getElementById('resultsBody');
+            
+            resultsCount.textContent = `${jobs.length} jobs found`;
+            
+            if (jobs.length === 0) {
+                resultsBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">No jobs found matching your criteria</td></tr>';
+            } else {
+                resultsBody.innerHTML = jobs.map(job => `
+                    <tr>
+                        <td><div class="job-title">${escapeHtml(job.title)}</div></td>
+                        <td><div class="company">${escapeHtml(job.company)}</div></td>
+                        <td><div class="location">${escapeHtml(job.location)}</div></td>
+                        <td>${escapeHtml(job.posted)}</td>
+                        <td>${escapeHtml(job.level)}</td>
+                        <td>${escapeHtml(job.type)}</td>
+                        <td><a href="${job.url}" target="_blank" style="color: #0077b5;">View</a></td>
+                    </tr>
+                `).join('');
+            }
+            
+            resultsSection.style.display = 'block';
+        }
+
+        function exportToCSV() {
+            if (currentJobData.length === 0) {
+                showError('No data to export');
+                return;
+            }
+            
+            const headers = ['Title', 'Company', 'Location', 'Posted', 'Level', 'Type', 'URL', 'Description'];
+            const csvContent = [
+                headers.join(','),
+                ...currentJobData.map(job => [
+                    `"${job.title.replace(/"/g, '""')}"`,
+                    `"${job.company.replace(/"/g, '""')}"`,
+                    `"${job.location.replace(/"/g, '""')}"`,
+                    `"${job.posted.replace(/"/g, '""')}"`,
+                    `"${job.level.replace(/"/g, '""')}"`,
+                    `"${job.type.replace(/"/g, '""')}"`,
+                    `"${job.url.replace(/"/g, '""')}"`,
+                    `"${job.description.replace(/"/g, '""').substring(0, 500)}"`
+                ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `linkedin_jobs_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function showStatus(message, type = 'active') {
+            const statusSection = document.getElementById('statusSection');
+            const statusText = document.getElementById('statusText');
+            const statusDot = document.getElementById('statusDot');
+            
+            statusSection.style.display = 'block';
+            statusText.textContent = message;
+            
+            statusDot.className = 'status-dot';
+            if (type === 'error') {
+                statusDot.classList.add('error');
+            } else if (type === 'active') {
+                statusDot.classList.add('active');
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            
+            const content = document.querySelector('.content');
+            content.insertBefore(errorDiv, content.firstChild);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.textContent = message;
+            
+            const content = document.querySelector('.content');
+            content.insertBefore(successDiv, content.firstChild);
+            
+            setTimeout(() => {
+                successDiv.remove();
+            }, 5000);
+        }
+
+        function resetUI() {
+            // Clear any existing intervals
+            if (jobStatusInterval) {
+                clearInterval(jobStatusInterval);
+            }
+            
+            // Reset progress
+            document.getElementById('progressFill').style.width = '0%';
+            
+            // Hide results
+            document.getElementById('resultsSection').style.display = 'none';
+            
+            // Clear any error messages
+            document.querySelectorAll('.error').forEach(el => el.remove());
+            document.querySelectorAll('.success').forEach(el => el.remove());
+            
+            // Reset button
+            const searchBtn = document.getElementById('searchBtn');
+            searchBtn.disabled = true;
+            document.getElementById('btnText').textContent = '🔍 Searching...';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Demo mode for testing without actual Apify integration
+        function enableDemoMode() {
+            APIFY_CONFIG.API_TOKEN = 'DEMO_TOKEN';
+            
+            // Override the startApifyJob function for demo
+            window.startApifyJob = async function(formData) {
+                showStatus('Demo mode: Simulating job search...', 'active');
+                
+                // Simulate job progress
+                let progress = 0;
+                const demoInterval = setInterval(() => {
+                    progress += Math.random() * 20;
+                    if (progress >= 95) {
+                        progress = 95;
+                        clearInterval(demoInterval);
+                    }
+                    document.getElementById('progressFill').style.width = `${progress}%`;
+                }, 500);
+                
+                // Return a fake job ID
+                return 'demo-job-' + Date.now();
+            };
+            
+            // Override the fetchJobResults function for demo
+            window.fetchJobResults = async function(jobId) {
+                // Simulate delay
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Generate demo data
+                const demoJobs = [
+                    {
+                        title: 'Senior Software Engineer',
+                        company: 'Tech Corp',
+                        location: 'San Francisco, CA',
+                        posted: '2 days ago',
+                        level: 'Senior',
+                        type: 'Full-time',
+                        url: 'https://linkedin.com/jobs/view/12345',
+                        description: 'We are looking for an experienced software engineer...'
+                    },
+                    {
+                        title: 'Product Manager',
+                        company: 'Innovation Labs',
+                        location: 'New York, NY',
+                        posted: '1 week ago',
+                        level: 'Mid-level',
+                        type: 'Full-time',
+                        url: 'https://linkedin.com/jobs/view/12346',
+                        description: 'Join our product team to drive innovation...'
+                    },
+                    {
+                        title: 'Data Scientist',
+                        company: 'Analytics Pro',
+                        location: 'Remote',
+                        posted: '3 days ago',
+                        level: 'Senior',
+                        type: 'Full-time',
+                        url: 'https://linkedin.com/jobs/view/12347',
+                        description: 'Looking for a data scientist with machine learning experience...'
+                    }
+                ];
+                
+                currentJobData = demoJobs;
+                displayResults(currentJobData);
+                showStatus(`Demo: Found ${currentJobData.length} jobs!`, 'active');
+            };
+            
+            showSuccess('Demo mode enabled - using sample data');
+        }
+
+        // Uncomment the line below to enable demo mode for testing
+        // enableDemoMode();
+    </script>
+</body>
+</html>
