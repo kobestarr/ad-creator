@@ -64,13 +64,13 @@ LinkedIn / Instagram / Twitter (published)
 
 ### Key Endpoints
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/v2/message` | Create a draft message |
-| GET | `/v2/message?campaignId=xxx` | List messages by campaign |
-| GET | `/v2/message?ids=xxx` | Get message by ID |
-| GET | `/v2/message/xxx` | Get message by ID (path) |
-| DELETE | `/v2/message/xxx` | Delete message (needs testing) |
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| POST | `/v2/message` | Create a draft message | Confirmed working |
+| GET | `/v2/message?campaignId=xxx` | List messages by campaign (required) | Confirmed working |
+| GET | `/v2/message?ids=xxx` | Get message by ID (query param) | Confirmed working |
+| GET | `/v2/message/xxx` | Get message by ID (URL path) | Confirmed working |
+| DELETE | `/v2/message/xxx` | Delete message | Needs re-testing |
 
 ### Required Parameters (POST /v2/message)
 
@@ -81,6 +81,62 @@ LinkedIn / Instagram / Twitter (published)
 | message | string | Yes | Post content |
 | status | string | No | "draft" (default), "default" |
 | media | string | No | Media ID for image posts (Instagram) |
+
+### Message Response Schema
+
+Confirmed via Postman (Feb 20, 2026). Response from `GET /v2/message?campaignId=xxx`:
+
+```json
+{
+  "Result": true,
+  "Items": [
+    {
+      "Id": "005uknajp2x6f7j",
+      "Created": "2026-02-01 12:28:10",
+      "Modified": "2026-02-01 12:49:15",
+      "Status": "default",
+      "Type": "image",
+      "AccountId": "001kzy8780tsd6r",
+      "CreatedBy": "00Ayqwys85oqx9e",
+      "ModifiedBy": "00Ayqwys85oqx9e",
+      "CampaignId": "002g5m4amrtu2xs",
+      "Network": "Instagram",
+      "Subject": "",
+      "Message": "The gap between AI investment and AI return..."
+    }
+  ],
+  "Total": 27
+}
+```
+
+### Message Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Id | string | Unique message ID (prefix `005`) |
+| Created | datetime | Creation timestamp (UTC) |
+| Modified | datetime | Last modification timestamp |
+| Status | string | `default`, `draft`, etc. |
+| Type | string | `image`, `text`, etc. |
+| AccountId | string | Bluprintx account ID |
+| CreatedBy | string | User ID who created the message |
+| ModifiedBy | string | User ID who last modified |
+| CampaignId | string | Parent campaign ID |
+| Network | string | `LinkedIn`, `Instagram`, `Twitter` |
+| Subject | string | Message subject (typically empty for social) |
+| Message | string | Full post content |
+| IsAppMessage | int | 1 = created for app use (normal), 0 = board-only |
+| IsBoardMessage | int | 1 = board message (UI visibility constraint when IsAppMessage=0) |
+
+### API Behaviour Notes (from Oktopost Support, Feb 2026)
+
+These were confirmed directly by Jason at Oktopost via support ticket:
+
+1. **`campaignId` is mandatory for listing** - There is no global `/v2/message` list. You must always provide `campaignId` or specific `ids`.
+2. **`IsAppMessage: 1` is normal** - All API-created messages get this flag. It does NOT affect visibility in the API or UI.
+3. **Visibility constraint** - Only when `IsAppMessage: 0` AND `IsBoardMessage: 1` are messages hidden from the campaign UI view. This does not apply to API-created messages.
+4. **Two ID lookup methods** - Both `?ids=005xxx` (query param) and `/005xxx` (URL path) work for retrieving a single message.
+5. **No workflow/board assignment needed** - Messages created via API appear in the campaign view automatically.
 
 ### Campaigns
 
@@ -149,17 +205,34 @@ Playwright-based browser automation. Posts content through the Oktopost web UI. 
 | Platform coverage | LinkedIn + Instagram + Twitter |
 | API reliability | > 99% success rate |
 
+## Support & Escalation
+
+| Contact | Channel | Reference |
+|---------|---------|-----------|
+| Oktopost Support (Jason) | Zendesk ticket | API issues, endpoint behaviour |
+| Kobi Omenaka | kobi.omenaka@bluprintx.com | Account owner, pipeline operator |
+
+## Issue History
+
+| Date | Issue | Resolution |
+|------|-------|------------|
+| Feb 1, 2026 | `campaignId` filter returning 0 results | Resolved Feb 20 - was likely a typo. Support confirmed 27 messages visible. |
+| Feb 1, 2026 | DELETE returning success without deleting | Still under investigation |
+| Feb 1, 2026 | API messages not visible in campaign UI | Resolved - messages do appear, original test was flawed |
+
 ## Open Items
 
 | Item | Status | Priority |
 |------|--------|----------|
-| Delete endpoint verification | Needs testing | Medium |
+| Delete endpoint verification | Needs re-testing | Medium |
 | Image/asset auto-upload to Oktopost | Not started | High |
-| Scheduling via API (not just drafts) | Research needed | Medium |
+| Scheduling via API (set publish date/time) | Research needed | Medium |
 | Webhook for post status updates | Research needed | Low |
-| CSV export from Claude skill | Manual process | Medium |
+| CSV export from Claude skill (currently manual) | Manual process | Medium |
+| End-to-end pipeline test (full 24 posts) | Ready to test | High |
 
 ---
 
 *Created: 2026-02-20*
-*Version: 1.1*
+*Updated: 2026-02-20*
+*Version: 1.2*
