@@ -1,6 +1,7 @@
 /**
  * Oktopost UI Automation via Playwright
- * Posts content to Oktopost through the browser UI (bypasses broken API)
+ * Posts content to Oktopost through the browser UI (alternative to API method)
+ * Note: API confirmed working as of Feb 2026 - prefer post-to-oktopost.py for API-based posting
  * 
  * Usage: node oktopost-post-ui.js "LinkedIn" "CampaignID" "Post content here"
  */

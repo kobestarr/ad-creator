@@ -119,7 +119,7 @@ These are gitignored from the main clawd repo.
 |---------|--------|---------|-------|
 | Withings | Active | scripts/health/withings-* | User ID: 14711398 |
 | Strava | Active | scripts/health/strava-* | Poynton 10k training |
-| Oktopost | Blocked | scripts/social/ | Awaiting API support response |
+| Oktopost | Active | scripts/social/ | API confirmed working (Feb 2026) - campaignId filter works, was likely a typo |
 | Asana | Active | scripts/briefings/asana-* | PAT-based access |
 | FreeAgent | Research | memory/integrations/ | Financial tracking |
 
@@ -157,5 +157,5 @@ Task: |
 
 ---
 
-*Last Updated: 2026-02-18*
+*Last Updated: 2026-02-20*
 *Primary Goal: Clear GBP 100,045.43 debt by February 2027*

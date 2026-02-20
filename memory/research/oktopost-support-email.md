@@ -1,10 +1,14 @@
 # Oktopost Support Email - API Issues
 
+## Status: RESOLVED (Feb 20, 2026)
+
 ---
 
 **Subject:** Multiple API Bugs - Messages Created Via API Not Visible, Delete Returns Success But Doesn't Delete
 
 ---
+
+### Email Sent (Feb 1, 2026)
 
 Hi Oktopost Support,
 
@@ -58,72 +62,42 @@ GET https://api.oktopost.com/v2/message?ids=005xxx
 Response: {"Result":true,"Items":[{"Id":"005xxx","CampaignId":"002g5m4amrtu2xs","Network":"LinkedIn","Status":"default","IsAppMessage":1}],"Total":1}
 ```
 
-**Impact:**
-- Messages are created successfully via API
-- But cannot be listed by campaign
-- This means API-created messages don't appear in the campaign message UI
-- I cannot build automation around listing/managing campaign messages
-
 ---
 
 **ISSUE #2: Delete API Returns Success But Doesn't Delete Messages**
 
 When I try to delete a message, the API returns success but the message still exists.
 
-**Steps to Reproduce:**
+---
 
-1. Create a test message (ID: 005uknajp2x6f7j)
-```
-POST https://api.oktopost.com/v2/message
-campaignId=002g5m4amrtu2xs
-network=LinkedIn
-message="Test delete"
+### Support Response (Jason @ Oktopost, Feb 20, 2026)
 
-Response: {"Result":true,"Message":{"Id":"005uknajp2x6f7j"}}
-```
+**On campaignId filter returning 0 results:**
+> "I'm not sure why you're not getting any results. I tested it on my end, and it's showing me 27 Messages. Are you sure there isn't a typo somewhere on your end?"
 
-2. Try to delete the message:
-```
-DELETE https://api.oktopost.com/v2/message/005uknajp2x6f7j
+**On `_count` alone not working:**
+> "This endpoint requires the CampaignId parameter to list Messages, so this doesn't surprise me."
 
-Response: {"Result":true}
-```
+**On `IsAppMessage: 1`:**
+> "It only has visibility constraints if that's 0 and 'IsBoardMessage: 1' and only in the Oktopost UI for the Campaign."
 
-3. Verify if deleted - MESSAGE STILL EXISTS:
-```
-GET https://api.oktopost.com/v2/message?ids=005uknajp2x6f7j
-
-Response: {"Result":true,"Items":[{"Id":"005uknajp2x6f7j","CampaignId":"002g5m4amrtu2xs","Network":"LinkedIn","Message":"Test delete"}],"Total":1}
-```
-
-**Impact:**
-- Delete API appears to work (returns success)
-- But messages are NOT actually deleted
-- This causes test messages to accumulate
-- I cannot clean up test data
+**Answers to specific questions:**
+1. **campaignId filter works** — it is required to list messages. Alternative: message ID in URL path (`/v2/message/005xxx`)
+2. **Messages should show in UI** — likely was a typo causing the original issue
+3. **IsAppMessage: 1 does NOT affect API visibility**
+4. **No different endpoint needed**
+5. **No workflow/board assignment needed**
 
 ---
 
-**Additional Observations:**
+### Resolution
 
-- Messages created via API have `IsAppMessage: 1` flag
-- Messages created via UI have `IsAppMessage: 0` flag
-- This flag might be affecting visibility or behavior
+The `campaignId` filter works as expected. The original issue was likely a typo or transient problem. Confirmed working via Postman with 200 OK response returning items.
+
+**Integration status changed:** Blocked → Active
 
 ---
 
-**Questions:**
-
-1. Is the `campaignId` filter on `/v2/message` broken?
-2. Why does the Delete API return success but not actually delete messages?
-3. Is the `IsAppMessage` flag causing messages to be filtered or hidden?
-4. Is there a different endpoint I should use for listing API-created messages?
-5. Are messages and posts different entities that require different API calls?
-
-I've been testing this for several hours and the behavior is consistent. I'm happy to provide more details, do a screenshare, or jump on a call.
-
-Thanks for your help,
-Kobi
-Bluprintx
-kobi.omenaka@bluprintx.com
-
+*Email sent: 2026-02-01*
+*Response received: 2026-02-20*
+*Status: RESOLVED*

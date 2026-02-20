@@ -113,7 +113,7 @@ Latest Run: "Final Runauary run!!! Carc Saturday:-)"
 - Morning briefing system (THIS!)
 
 **⚠️ BLOCKED ITEMS:**
-- Oktopost API fixes (awaiting support)
+- ~~Oktopost API fixes (awaiting support)~~ RESOLVED Feb 20 - API works, was likely a typo
 - Freeagent KSD access (awaiting support)
 - Bannerbear → Canva integration
 

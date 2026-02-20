@@ -1,12 +1,13 @@
 # BluprintX → Oktopost Integration
 
-## Connected ✅
+## Connected & API Confirmed Working ✅
 
 | Field | Value |
 |-------|-------|
 | Account ID | 001kzy8780tsd6r |
 | Account Name | Bluprintx |
-| Status | Connected |
+| API Status | Active (confirmed Feb 20, 2026) |
+| Auth Method | Basic Auth (Account ID + API Key) |
 | Default Campaign | AI Value Accelerator (002g5m4amrtu2xs) |
 
 ## Available Campaigns
@@ -59,6 +60,15 @@ python3 /root/clawd/scripts/post-to-oktopost.py --interactive
 - Maps platform from Claude's table to Oktopost network
 - Adds leader name prefix for personal posts (Phil, AT, Lee)
 
+## API Notes (from Oktopost Support, Feb 2026)
+
+- `campaignId` is **required** when listing messages — no global list endpoint
+- `IsAppMessage: 1` = created for app use, no visibility impact on API
+- Only `IsAppMessage: 0` + `IsBoardMessage: 1` has visibility constraints in UI
+- Alternative ID lookup: `/v2/message/005xxx` (ID in URL path)
+- Delete endpoint needs further testing (was reported as returning success without deleting)
+
 ---
 
 *Created: 2026-02-01*
+*Updated: 2026-02-20 — API confirmed working, integration unblocked*
